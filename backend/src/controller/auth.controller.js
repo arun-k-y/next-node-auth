@@ -50,38 +50,59 @@ const signup = async (req, res) => {
   }
 };
 
+// const signin = async (req, res) => {
+//   try {
+//     const { email, password } = req.body;
+//     const user = await User.findOne({ email });
+
+//     if (!user) {
+//       return res.status(400).send({
+//         code: "USER_NOT_FOUND",
+//         message: "User not found",
+//       });
+//     }
+
+//     const isMatch = await user.comparePassword(password);
+
+//     if (!isMatch) {
+//       return res.status(400).send({
+//         code: "INVALID_PASSWORD",
+//         message: "Invalid password",
+//       });
+//     }
+
+//     const token = user.generateAuthToken();
+//     res.send({ token });
+//   } catch (error) {
+//     console.error("Signin error:", error);
+//     res.status(500).send({
+//       code: "UNKNOWN_ERROR",
+//       message: "An unexpected error occurred",
+//       error: error.message,
+//     });
+//   }
+// };
+
 const signin = async (req, res) => {
   try {
     const { email, password } = req.body;
     const user = await User.findOne({ email });
 
     if (!user) {
-      return res.status(400).send({
-        code: "USER_NOT_FOUND",
-        message: "User not found",
-      });
+      return res.status(401).json({ code: "USER_NOT_FOUND", message: "User not found" });
     }
 
-    const isMatch = await user.comparePassword(password);
-
-    if (!isMatch) {
-      return res.status(400).send({
-        code: "INVALID_PASSWORD",
-        message: "Invalid password",
-      });
+    if (!(await user.comparePassword(password))) {
+      return res.status(401).json({ code: "INVALID_PASSWORD", message: "Invalid password" });
     }
 
-    const token = user.generateAuthToken();
-    res.send({ token });
+    res.json({ token: user.generateAuthToken() });
   } catch (error) {
     console.error("Signin error:", error);
-    res.status(500).send({
-      code: "UNKNOWN_ERROR",
-      message: "An unexpected error occurred",
-      error: error.message,
-    });
+    res.status(500).json({ code: "UNKNOWN_ERROR", message: "An unexpected error occurred" });
   }
 };
+
 
 const logout = (req, res) => {
   res.send("Logout route");

@@ -6,6 +6,8 @@ const {
   verify2FA,
   deactivateUser,
   reactivateUser,
+  forgotPassword,
+  resetPassword,
 } = require("../controller/auth.controller.js");
 const auth = require("../middleware/auth.js");
 
@@ -22,6 +24,10 @@ router.post("/verify-email", verify2FA);
 router.patch("/deactivate", auth, deactivateUser);
 
 router.patch("/reactivate", auth, reactivateUser);
+
+router.post('/forgot-password', forgotPassword);
+
+router.post('/reset-password', resetPassword);
 
 router.get('/hello', (req, res) => {
   res.json({ message: 'Hello from the /hello route!' });

@@ -227,6 +227,139 @@ const reactivateUser = async (req, res) => {
   }
 };
 
+const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        code: "MISSING_EMAIL",
+        message: "Email is required",
+      });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      // For security, don't reveal if email exists or not
+      return res.status(200).json({
+        code: 200,
+        message:
+          "If an account with that email exists, a password reset code has been sent.",
+      });
+    }
+
+    // Check if user is deactivated
+    // if (user.isDeactivated) {
+    //   return res.status(400).json({
+    //     code: "ACCOUNT_DEACTIVATED",
+    //     message: "Account is deactivated. Please contact support.",
+    //   });
+    // }
+
+    // Generate 6-digit reset code
+    const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiry = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
+    user.passwordResetCode = resetCode;
+    user.passwordResetExpiry = expiry;
+    await user.save();
+
+    await sendEmail(
+      email,
+      "Giantogram Password Reset Code",
+      `Hello,
+
+We received a request to reset your password. Please use the reset code below to create a new password:
+
+Reset Code: ${resetCode}
+
+This code will expire in 15 minutes. If you didn't request a password reset, you can safely ignore this email.
+
+Thanks,
+Giantogram`
+    );
+
+    res.status(200).json({
+      code: 200,
+      message:
+        "If an account with that email exists, a password reset code has been sent.",
+    });
+  } catch (error) {
+    console.error("Forgot password error:", error);
+    res
+      .status(500)
+      .json({ code: "UNKNOWN_ERROR", message: "An unexpected error occurred" });
+  }
+};
+
+const resetPassword = async (req, res) => {
+  try {
+    const { email, resetCode, newPassword } = req.body;
+
+    if (!email || !resetCode || !newPassword) {
+      return res.status(400).json({
+        code: "MISSING_FIELDS",
+        message: "Email, reset code, and new password are required",
+      });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(400).json({
+        code: "INVALID_RESET",
+        message: "Invalid reset code or email",
+      });
+    }
+
+    if (user.passwordResetCode !== resetCode) {
+      return res.status(400).json({
+        code: "INVALID_RESET_CODE",
+        message: "Invalid reset code",
+      });
+    }
+
+    if (user.passwordResetExpiry < new Date()) {
+      return res.status(400).json({
+        code: "RESET_CODE_EXPIRED",
+        message: "Reset code has expired. Please request a new one.",
+      });
+    }
+
+    // Update password
+    user.password = newPassword;
+    user.passwordResetCode = null;
+    user.passwordResetExpiry = null;
+
+    // Clear any existing 2FA codes for security
+    user.twoFACode = null;
+    user.twoFACodeExpiry = null;
+
+    await user.save();
+
+    // Send confirmation email
+    await sendEmail(
+      email,
+      "Giantogram Password Changed",
+      `Hello,
+
+Your password has been successfully changed. If you didn't make this change, please contact our support team immediately.
+
+Thanks,
+Giantogram`
+    );
+
+    res.status(200).json({
+      code: 200,
+      message: "Password has been successfully reset",
+    });
+  } catch (error) {
+    console.error("Reset password error:", error);
+    res
+      .status(500)
+      .json({ code: "UNKNOWN_ERROR", message: "An unexpected error occurred" });
+  }
+};
+
 module.exports = {
   signin,
   signup,
@@ -234,4 +367,6 @@ module.exports = {
   verify2FA,
   deactivateUser,
   reactivateUser,
+  forgotPassword,
+  resetPassword,
 };

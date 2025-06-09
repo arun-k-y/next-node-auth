@@ -26,8 +26,10 @@ const userSchema = new mongoose.Schema(
     twoFACodeExpiry: Date,
     isDeactivated: {
       type: Boolean,
-      default: false, 
+      default: false,
     },
+    passwordResetCode: { type: String, default: null },
+    passwordResetExpiry: { type: Date, default: null },
   },
   {
     timestamps: true,
